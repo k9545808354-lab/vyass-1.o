@@ -38,17 +38,16 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.data.model.DivisionId
 import com.example.data.model.DivisionInfo
-import com.example.data.repository.TimetableData
 import com.example.ui.theme.LocalVyasColors
 import com.example.ui.theme.VyasBackground
 
 @Composable
 fun DivisionSelectionScreen(
+    divisions: List<DivisionInfo>,
     onDivisionSelected: (DivisionId) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val vyas = LocalVyasColors.current
-    val divisions = TimetableData.divisions
 
     Box(
         modifier = modifier

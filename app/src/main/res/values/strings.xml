@@ -31,4 +31,8 @@
     <string name="btn_save">Save</string>
     <string name="btn_close">✕ Close</string>
     <string name="btn_open_external">↗ Open Externally</string>
+    <string name="btn_edit_timetable">Edit</string>
+    <string name="btn_done_editing">Done</string>
+    <string name="btn_reset_default">Reset</string>
+    <string name="tip_edit_mode">✏️ Edit Mode: Tap any slot to change subject, faculty, lab batches, or tap the card above to change Room / W.E.F.</string>
 </resources>

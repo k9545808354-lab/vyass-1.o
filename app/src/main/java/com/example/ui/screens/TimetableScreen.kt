@@ -14,15 +14,26 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,8 +55,8 @@ import com.example.R
 import com.example.data.model.BatchAccent
 import com.example.data.model.DaySchedule
 import com.example.data.model.DivisionId
+import com.example.data.model.DivisionInfo
 import com.example.data.model.TimetableCell
-import com.example.data.repository.TimetableData
 import com.example.ui.components.VyasNavHeader
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.LocalVyasColors
@@ -58,16 +69,39 @@ private val HEADER_H = 56.dp
 private val ROW_H = 114.dp
 private val GRID_BORDER = Color(0xFF1F2C42)
 
+private data class EditingTarget(
+    val dayIndex: Int,
+    val dayName: String,
+    val isPreLunch: Boolean,
+    val cellIndex: Int,
+    val cell: TimetableCell,
+    val slotTitle: String,
+    val canSplit: Boolean,
+    val canMergeNext: Boolean
+)
+
 @Composable
 fun TimetableScreen(
-    divisionId: DivisionId,
+    divisionInfo: DivisionInfo,
+    schedule: List<DaySchedule>,
+    isCustomized: Boolean,
     onBackToDivisions: () -> Unit,
     onSubjectClick: (String) -> Unit,
+    onUpdateCell: (dayIndex: Int, isPreLunch: Boolean, cellIndex: Int, newCell: TimetableCell) -> Unit,
+    onSplitCell: (dayIndex: Int, isPreLunch: Boolean, cellIndex: Int) -> Unit,
+    onMergeNextCell: (dayIndex: Int, isPreLunch: Boolean, cellIndex: Int) -> Unit,
+    onUpdateDivisionInfo: (classRoom: String, wefDate: String) -> Unit,
+    onResetDefault: () -> Unit,
+    onShowMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val vyas = LocalVyasColors.current
-    val divInfo = TimetableData.getDivisionInfo(divisionId)
-    val schedule = TimetableData.getSchedule(divisionId)
+    val divisionId = divisionInfo.id
+
+    var isEditMode by remember { mutableStateOf(false) }
+    var editingTarget by remember { mutableStateOf<EditingTarget?>(null) }
+    var showDivisionInfoDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
 
     val wefColor = when (divisionId) {
         DivisionId.E -> vyas.cyan
@@ -75,10 +109,12 @@ fun TimetableScreen(
         DivisionId.G -> vyas.green
     }
 
-    val tipMessage = if (divisionId == DivisionId.F) {
-        "💡 Tap any subject (EM-I, PPS, BEEE, EP, etc.) to view units or run the C compilers."
-    } else {
-        "💡 Tap PPS to access the Dual Dark C Compilers and Unit Notes 1 to 5."
+    val tipMessage = when {
+        isEditMode -> stringResource(R.string.tip_edit_mode)
+        divisionId == DivisionId.F ->
+            "💡 Tap any subject (EM-I, PPS, BEEE, EP, etc.) to view units or run the C compilers."
+        else ->
+            "💡 Tap PPS to access the Dual Dark C Compilers and Unit Notes 1 to 5."
     }
 
     Box(
@@ -98,21 +134,101 @@ fun TimetableScreen(
                 backLabel = stringResource(R.string.btn_back_divisions),
                 onBack = onBackToDivisions,
                 rightContent = {
-                    Text(
-                        text = "W.E.F.: ${divInfo.wefDate}",
-                        color = wefColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (isCustomized && isEditMode) {
+                            Surface(
+                                modifier = Modifier
+                                    .heightIn(min = 42.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { showResetConfirmDialog = true }
+                                    .testTag("reset_timetable_button"),
+                                shape = RoundedCornerShape(8.dp),
+                                color = vyas.red.copy(alpha = 0.14f),
+                                border = BorderStroke(1.dp, vyas.red)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Refresh,
+                                        contentDescription = stringResource(R.string.btn_reset_default),
+                                        tint = vyas.red,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.btn_reset_default),
+                                        color = vyas.red,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier
+                                .heightIn(min = 42.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { isEditMode = !isEditMode }
+                                .testTag("toggle_edit_mode_button"),
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isEditMode) vyas.green else vyas.cyan.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, if (isEditMode) vyas.green else vyas.cyan)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isEditMode) Icons.Filled.Check else Icons.Filled.Edit,
+                                    contentDescription = if (isEditMode) {
+                                        stringResource(R.string.btn_done_editing)
+                                    } else {
+                                        stringResource(R.string.btn_edit_timetable)
+                                    },
+                                    tint = if (isEditMode) Color.Black else vyas.cyan,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = if (isEditMode) {
+                                        stringResource(R.string.btn_done_editing)
+                                    } else {
+                                        stringResource(R.string.btn_edit_timetable)
+                                    },
+                                    color = if (isEditMode) Color.Black else vyas.cyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
+                    }
                 }
             )
 
-            // Meta Card
+            // Meta Card (tappable in Edit Mode to change Room / W.E.F.)
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .then(
+                        if (isEditMode) {
+                            Modifier
+                                .clickable { showDivisionInfoDialog = true }
+                                .testTag("edit_division_meta_card")
+                        } else Modifier
+                    ),
                 shape = RoundedCornerShape(10.dp),
                 color = vyas.cardBg,
-                border = BorderStroke(1.dp, vyas.border)
+                border = BorderStroke(
+                    width = if (isEditMode) 1.5.dp else 1.dp,
+                    color = if (isEditMode) vyas.cyan else vyas.border
+                )
             ) {
                 Row(
                     modifier = Modifier
@@ -121,44 +237,64 @@ fun TimetableScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("CLASS: ") }
-                            append("FE  |  ")
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("DIVISION: ") }
-                            append("${divInfo.id.code}  |  ")
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("BRANCH: ") }
-                            append("COMPUTER")
-                        },
-                        color = Color(0xFFDDE6F5),
-                        fontSize = 12.sp,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("CLASS: ") }
+                                append("FE  |  ")
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("DIV: ") }
+                                append("${divisionInfo.id.code}  |  ")
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("COMPUTER") }
+                            },
+                            color = Color(0xFFDDE6F5),
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "W.E.F.: ${divisionInfo.wefDate}" + if (isCustomized) "  •  CUSTOMIZED" else "",
+                            color = wefColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) { append("ROOM: ") }
-                            append(divInfo.classRoom)
-                        },
-                        color = vyas.cyan,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "ROOM: ${divisionInfo.classRoom}",
+                            color = vyas.cyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (isEditMode) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit room and date",
+                                tint = vyas.cyan,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Tip Banner
+            // Tip / Edit Mode Banner
+            val bannerColor = if (isEditMode) vyas.green else vyas.yellow
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                color = vyas.yellow.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, vyas.yellow.copy(alpha = 0.25f))
+                color = bannerColor.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, bannerColor.copy(alpha = 0.3f))
             ) {
                 Text(
                     text = tipMessage,
-                    color = vyas.yellow,
+                    color = bannerColor,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
                 )
@@ -173,15 +309,34 @@ fun TimetableScreen(
                     .testTag("official_timetable_grid"),
                 shape = RoundedCornerShape(12.dp),
                 color = vyas.cardBg,
-                border = BorderStroke(1.5.dp, vyas.border)
+                border = BorderStroke(1.5.dp, if (isEditMode) vyas.cyan.copy(alpha = 0.7f) else vyas.border)
             ) {
                 Box(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
+                    modifier = Modifier.horizontalScroll(rememberScrollState())
                 ) {
                     OfficialTimetableGrid(
                         schedule = schedule,
-                        onSubjectClick = onSubjectClick
+                        isEditMode = isEditMode,
+                        onSubjectClick = onSubjectClick,
+                        onCellEditClick = { dayIdx, dayName, isPre, cellIdx, cells ->
+                            val cell = cells[cellIdx]
+                            val offsetSlots = cells.take(cellIdx).sumOf { it.colSpan }
+                            val title = resolveSlotTimeRange(isPre, offsetSlots, cell.colSpan)
+                            val canSplit = cell.colSpan == 2
+                            val canMergeNext = cell.colSpan == 1 &&
+                                cellIdx + 1 < cells.size &&
+                                cells[cellIdx + 1].colSpan == 1
+                            editingTarget = EditingTarget(
+                                dayIndex = dayIdx,
+                                dayName = dayName,
+                                isPreLunch = isPre,
+                                cellIndex = cellIdx,
+                                cell = cell,
+                                slotTitle = title,
+                                canSplit = canSplit,
+                                canMergeNext = canMergeNext
+                            )
+                        }
                     )
                 }
             }
@@ -189,12 +344,75 @@ fun TimetableScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+
+    editingTarget?.let { target ->
+        EditSlotDialog(
+            divisionId = divisionId,
+            dayName = target.dayName,
+            slotTitle = target.slotTitle,
+            initialCell = target.cell,
+            canSplit = target.canSplit,
+            canMergeNext = target.canMergeNext,
+            onSave = { updatedCell ->
+                onUpdateCell(target.dayIndex, target.isPreLunch, target.cellIndex, updatedCell)
+                editingTarget = null
+                onShowMessage("Updated ${target.dayName} (${target.slotTitle})")
+            },
+            onSplitCell = {
+                onSplitCell(target.dayIndex, target.isPreLunch, target.cellIndex)
+                editingTarget = null
+                onShowMessage("Split ${target.dayName} (${target.slotTitle}) into two 1-hour slots")
+            },
+            onMergeNextCell = {
+                onMergeNextCell(target.dayIndex, target.isPreLunch, target.cellIndex)
+                editingTarget = null
+                onShowMessage("Merged ${target.dayName} into a 2-hour block")
+            },
+            onDismiss = { editingTarget = null }
+        )
+    }
+
+    if (showDivisionInfoDialog) {
+        EditDivisionInfoDialog(
+            divisionInfo = divisionInfo,
+            onSave = { room, wef ->
+                onUpdateDivisionInfo(room, wef)
+                showDivisionInfoDialog = false
+                onShowMessage("Updated ${divisionInfo.title} (Room $room)")
+            },
+            onDismiss = { showDivisionInfoDialog = false }
+        )
+    }
+
+    if (showResetConfirmDialog) {
+        ResetTimetableConfirmDialog(
+            divisionTitle = divisionInfo.title,
+            onConfirmReset = {
+                onResetDefault()
+                showResetConfirmDialog = false
+                isEditMode = false
+                onShowMessage("Restored official ${divisionInfo.title} timetable")
+            },
+            onDismiss = { showResetConfirmDialog = false }
+        )
+    }
+}
+
+private fun resolveSlotTimeRange(isPreLunch: Boolean, offset: Int, span: Int): String {
+    val preTimes = listOf("11.00", "12.00", "1.00")
+    val postTimes = listOf("1.45", "2.45", "3.45", "4.45", "5.45")
+    val list = if (isPreLunch) preTimes else postTimes
+    val startIdx = offset.coerceIn(0, list.lastIndex - 1)
+    val endIdx = (offset + span).coerceIn(startIdx + 1, list.lastIndex)
+    return "${list[startIdx]} - ${list[endIdx]}"
 }
 
 @Composable
 private fun OfficialTimetableGrid(
     schedule: List<DaySchedule>,
-    onSubjectClick: (String) -> Unit
+    isEditMode: Boolean,
+    onSubjectClick: (String) -> Unit,
+    onCellEditClick: (dayIdx: Int, dayName: String, isPreLunch: Boolean, cellIdx: Int, cells: List<TimetableCell>) -> Unit
 ) {
     val vyas = LocalVyasColors.current
 
@@ -219,14 +437,19 @@ private fun OfficialTimetableGrid(
         Row {
             // Left section: Day + Slots 1 & 2
             Column {
-                schedule.forEach { dayRow ->
+                schedule.forEachIndexed { dayIdx, dayRow ->
                     Row(modifier = Modifier.height(ROW_H)) {
                         DayCell(day = dayRow.day)
-                        dayRow.preLunchCells.forEach { cell ->
+                        dayRow.preLunchCells.forEachIndexed { cellIdx, cell ->
                             TimetableCellView(
                                 cell = cell,
                                 width = SLOT_W * cell.colSpan,
-                                onSubjectClick = onSubjectClick
+                                isEditMode = isEditMode,
+                                testTag = "cell_${dayRow.day}_pre_$cellIdx",
+                                onSubjectClick = onSubjectClick,
+                                onEditClick = {
+                                    onCellEditClick(dayIdx, dayRow.day, true, cellIdx, dayRow.preLunchCells)
+                                }
                             )
                         }
                     }
@@ -260,13 +483,18 @@ private fun OfficialTimetableGrid(
 
             // Right section: Slots 4, 5, 6, 7
             Column {
-                schedule.forEach { dayRow ->
+                schedule.forEachIndexed { dayIdx, dayRow ->
                     Row(modifier = Modifier.height(ROW_H)) {
-                        dayRow.postLunchCells.forEach { cell ->
+                        dayRow.postLunchCells.forEachIndexed { cellIdx, cell ->
                             TimetableCellView(
                                 cell = cell,
                                 width = SLOT_W * cell.colSpan,
-                                onSubjectClick = onSubjectClick
+                                isEditMode = isEditMode,
+                                testTag = "cell_${dayRow.day}_post_$cellIdx",
+                                onSubjectClick = onSubjectClick,
+                                onEditClick = {
+                                    onCellEditClick(dayIdx, dayRow.day, false, cellIdx, dayRow.postLunchCells)
+                                }
                             )
                         }
                     }
@@ -361,23 +589,38 @@ private fun DayCell(day: String) {
 private fun TimetableCellView(
     cell: TimetableCell,
     width: Dp,
-    onSubjectClick: (String) -> Unit
+    isEditMode: Boolean,
+    testTag: String,
+    onSubjectClick: (String) -> Unit,
+    onEditClick: () -> Unit
 ) {
     val vyas = LocalVyasColors.current
     Box(
         modifier = Modifier
             .width(width)
             .fillMaxHeight()
-            .border(0.5.dp, GRID_BORDER)
+            .border(
+                width = if (isEditMode) 1.dp else 0.5.dp,
+                color = if (isEditMode) vyas.cyan.copy(alpha = 0.45f) else GRID_BORDER
+            )
+            .then(
+                if (isEditMode) {
+                    Modifier
+                        .background(vyas.cyan.copy(alpha = 0.03f))
+                        .clickable(onClick = onEditClick)
+                        .testTag(testTag)
+                } else Modifier
+            )
             .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
         when (cell) {
             is TimetableCell.Empty -> {
                 Text(
-                    text = "-",
-                    color = vyas.textDim,
-                    fontSize = 13.sp
+                    text = if (isEditMode) "+ Add" else "-",
+                    color = if (isEditMode) vyas.cyan.copy(alpha = 0.7f) else vyas.textDim,
+                    fontSize = if (isEditMode) 11.sp else 13.sp,
+                    fontWeight = if (isEditMode) FontWeight.Bold else FontWeight.Normal
                 )
             }
             is TimetableCell.Lecture -> {
@@ -407,7 +650,7 @@ private fun TimetableCellView(
                             .background(bgColor)
                             .border(1.dp, borderColor, RoundedCornerShape(6.dp))
                             .then(
-                                if (cell.clickable) {
+                                if (!isEditMode && cell.clickable) {
                                     Modifier
                                         .clickable { onSubjectClick(cell.subjectCode) }
                                         .testTag("subject_chip_${cell.subjectCode}")
@@ -458,7 +701,7 @@ private fun TimetableCellView(
                                     )
                                 }
                                 .then(
-                                    if (entry.subjectCode != null) {
+                                    if (!isEditMode && entry.subjectCode != null) {
                                         Modifier.clickable { onSubjectClick(entry.subjectCode) }
                                     } else Modifier
                                 )
@@ -514,6 +757,24 @@ private fun TimetableCellView(
                         }
                     }
                 }
+            }
+        }
+
+        if (isEditMode) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(16.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(vyas.cyan.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit slot",
+                    tint = vyas.cyan,
+                    modifier = Modifier.size(10.dp)
+                )
             }
         }
     }

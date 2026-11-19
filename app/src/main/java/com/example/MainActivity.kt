@@ -70,6 +70,9 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
 
                 val lockState by viewModel.lockState.collectAsStateWithLifecycle()
+                val divisions by viewModel.divisions.collectAsStateWithLifecycle()
+                val schedules by viewModel.schedules.collectAsStateWithLifecycle()
+                val customizedDivisions by viewModel.customizedDivisions.collectAsStateWithLifecycle()
                 val activeCompilerTab by viewModel.activeCompilerTab.collectAsStateWithLifecycle()
                 val pdfHubState by viewModel.pdfHubState.collectAsStateWithLifecycle()
 
@@ -141,6 +144,7 @@ class MainActivity : ComponentActivity() {
 
                             composable(VyasRoutes.DIVISIONS) {
                                 DivisionSelectionScreen(
+                                    divisions = divisions,
                                     onDivisionSelected = { division ->
                                         viewModel.selectDivision(division)
                                         navController.navigate(VyasRoutes.timetable(division))
@@ -154,12 +158,32 @@ class MainActivity : ComponentActivity() {
                             ) { backStackEntry ->
                                 val divCode = backStackEntry.arguments?.getString("division") ?: "E"
                                 val divisionId = DivisionId.fromCode(divCode)
+                                val divInfo = divisions.first { it.id == divisionId }
+                                val divSchedule = schedules[divisionId].orEmpty()
                                 TimetableScreen(
-                                    divisionId = divisionId,
+                                    divisionInfo = divInfo,
+                                    schedule = divSchedule,
+                                    isCustomized = divisionId in customizedDivisions,
                                     onBackToDivisions = { navController.popBackStack() },
                                     onSubjectClick = { subjectCode ->
                                         navController.navigate(VyasRoutes.units(subjectCode))
-                                    }
+                                    },
+                                    onUpdateCell = { dayIdx, isPre, cellIdx, newCell ->
+                                        viewModel.updateTimetableCell(divisionId, dayIdx, isPre, cellIdx, newCell)
+                                    },
+                                    onSplitCell = { dayIdx, isPre, cellIdx ->
+                                        viewModel.splitTimetableCell(divisionId, dayIdx, isPre, cellIdx)
+                                    },
+                                    onMergeNextCell = { dayIdx, isPre, cellIdx ->
+                                        viewModel.mergeTimetableCells(divisionId, dayIdx, isPre, cellIdx)
+                                    },
+                                    onUpdateDivisionInfo = { room, wef ->
+                                        viewModel.updateDivisionInfo(divisionId, room, wef)
+                                    },
+                                    onResetDefault = {
+                                        viewModel.resetDivisionToDefault(divisionId)
+                                    },
+                                    onShowMessage = showMessage
                                 )
                             }
 
