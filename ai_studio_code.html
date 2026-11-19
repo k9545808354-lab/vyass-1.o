@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SSBT COET - FE Computer Timetable & C Compilers</title>
+  <style>
+    :root {
+      --bg: #06090f;
+      --card-bg: #0f1624;
+      --border: #1c273c;
+      --cyan: #00f0ff;
+      --green: #00ff66;
+      --yellow: #fee75c;
+      --purple: #9d00ff;
+      --red: #ff3366;
+      --text-dim: #8b9bb4;
+      --text-light: #ffffff;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text-light);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 14px;
+    }
+    #app-container {
+      width: 100%;
+      max-width: 960px;
+      min-height: 90vh;
+      position: relative;
+    }
+    .screen {
+      display: none;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+    .active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .skip-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      z-index: 100;
+    }
+    .skip-btn:hover {
+      background: var(--cyan);
+      color: #000;
+      border-color: var(--cyan);
+    }
+
+    /* 1. LOCK SCREEN */
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      background: rgba(0, 240, 255, 0.08);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    h1.app-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+    p.sub {
+      color: var(--text-dim);
+      font-size: 13px;
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      max-width: 460px;
+      margin: 0 auto;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.05);
+    }
+    label {
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      display: block;
+      margin-bottom: 8px;
+    }
+    input.code-input {
+      width: 100%;
+      background: #090d15;
+      border: 1.5px solid var(--border);
+      color: var(--green);
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 16px;
+      letter-spacing: 2px;
+      font-family: monospace;
+      outline: none;
+      text-transform: uppercase;
+    }
+    input.code-input:focus { border-color: var(--cyan); }
+    .btn-primary {
+      width: 100%;
+      background: var(--cyan);
+      color: #070a10;
+      border: none;
+      font-weight: 800;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 18px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .error-box {
+      color: #ff4560;
+      font-size: 12px;
+      margin-top: 8px;
+      display: none;
+      font-weight: 600;
+    }
+
+    /* 2. TEDDY BEAR STAGE & ANIMATION */
+    .vault-stage {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: radial-gradient(circle at 50% 35%, #141c30 0%, #060910 85%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      margin-top: 20px;
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.08);
+    }
+    .stage-floor {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 90px;
+      background: linear-gradient(180deg, #16243d 0%, #090e1a 100%);
+      border-top: 2.5px solid var(--cyan);
+      box-shadow: 0 -10px 22px rgba(0, 240, 255, 0.18);
+    }
+    .grid-lines {
+      width: 100%;
+      height: 100%;
+      background-image: linear-gradient(90deg, rgba(0, 240, 255, 0.06) 1px, transparent 1px),
+                        linear-gradient(rgba(0, 240, 255, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .vault-door-frame {
+      position: absolute;
+      right: 35px;
+      bottom: 85px;
+      width: 150px;
+      height: 220px;
+      border: 4px solid #23344e;
+      border-radius: 14px 14px 0 0;
+      background: #000;
+      overflow: hidden;
+      box-shadow: 0 0 25px rgba(0,0,0,0.8);
+    }
+    .door-inner-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(0, 255, 102, 0.5) 0%, rgba(0, 240, 255, 0.25) 60%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 0 10px var(--cyan);
+    }
+    .door-panel {
+      position: absolute;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(135deg, #1b263b 0%, #0d1522 100%);
+      border: 1px solid #334766;
+      transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+      z-index: 2;
+    }
+    .door-panel.left { left: 0; border-right: 2px solid #00f0ff44; }
+    .door-panel.right { right: 0; border-left: 2px solid #00f0ff44; }
+    .door-open .door-panel.left { transform: translateX(-100%); }
+    .door-open .door-panel.right { transform: translateX(100%); }
+
+    .biometric-scanner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 44px;
+      height: 44px;
+      background: #090d16;
+      border: 2px solid var(--red);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      box-shadow: 0 0 12px var(--red);
+      transition: all 0.4s ease;
+    }
+    .biometric-scanner.unlocked {
+      border-color: var(--green);
+      box-shadow: 0 0 20px var(--green);
+    }
+    .scan-beam {
+      position: absolute;
+      width: 80%;
+      height: 2px;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      animation: scanPulse 1s infinite alternate;
+    }
+    .biometric-scanner.unlocked .scan-beam {
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+    }
+    @keyframes scanPulse {
+      0% { transform: translateY(-12px); opacity: 0.3; }
+      100% { transform: translateY(12px); opacity: 1; }
+    }
+
+    /* Teddy Bear Actor */
+    .teddy-actor {
+      position: absolute;
+      left: 15px;
+      bottom: 85px;
+      width: 120px;
+      height: 165px;
+      z-index: 10;
+      transition: transform 3.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+    .teddy-svg-wrap {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
+    }
+    .teddy-waddling .t-leg-left {
+      animation: teddyLegWalk 0.4s infinite alternate ease-in-out;
+      transform-origin: 38px 122px;
+    }
+    .teddy-waddling .t-leg-right {
+      animation: teddyLegWalk 0.4s infinite alternate-reverse ease-in-out;
+      transform-origin: 66px 122px;
+    }
+    .teddy-waddling .t-arm-left {
+      animation: teddyArmSwing 0.4s infinite alternate ease-in-out;
+      transform-origin: 24px 75px;
+    }
+    .teddy-waddling .t-body-group {
+      animation: teddyWaddleBounce 0.2s infinite alternate ease-in-out;
+    }
+    .teddy-waddling .t-ears-group {
+      animation: earTwitch 0.4s infinite alternate ease-in-out;
+      transform-origin: 52px 30px;
+    }
+    @keyframes teddyLegWalk { 0% { transform: rotate(-24deg); } 100% { transform: rotate(24deg); } }
+    @keyframes teddyArmSwing { 0% { transform: rotate(20deg); } 100% { transform: rotate(-20deg); } }
+    @keyframes teddyWaddleBounce { 0% { transform: translateY(0) rotate(-2deg); } 100% { transform: translateY(-5px) rotate(2deg); } }
+    @keyframes earTwitch { 0% { transform: rotate(-3deg); } 100% { transform: rotate(3deg); } }
+
+    .floating-key {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      opacity: 0;
+      z-index: 15;
+      filter: drop-shadow(0 0 10px #ffd700);
+      transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform: scale(0.3);
+    }
+    .key-in-hand { opacity: 1; transform: scale(1.1) rotate(-20deg); }
+    .key-inserted { opacity: 1; transform: scale(1) translate(146px, -18px) rotate(90deg); }
+
+    .status-hud {
+      margin-top: 15px;
+      background: #0b101a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: monospace;
+      color: var(--cyan);
+      font-size: 13px;
+    }
+    .status-hud .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--cyan);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 3. LAPTOP C PROGRAMMING TERMINAL */
+    .laptop-showcase {
+      max-width: 680px;
+      margin: 25px auto 0;
+    }
+    .laptop-lid {
+      background: #141b28;
+      border: 2px solid #28374d;
+      border-radius: 14px 14px 0 0;
+      overflow: hidden;
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.12);
+    }
+    .editor-top-bar {
+      background: #090e17;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .window-dots { display: flex; gap: 6px; }
+    .w-dot { width: 11px; height: 11px; border-radius: 50%; }
+    .w-dot.r { background: #ff5f56; }
+    .w-dot.y { background: #ffbd2e; }
+    .w-dot.g { background: #27c93f; }
+    .editor-tab {
+      background: #141b28;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      color: var(--cyan);
+      font-size: 11px;
+      font-family: monospace;
+      padding: 4px 12px;
+      border-radius: 6px 6px 0 0;
+    }
+    .editor-body {
+      background: #080c14;
+      padding: 18px;
+      min-height: 240px;
+      font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .c-keyword { color: #ff7b72; font-weight: bold; }
+    .c-header  { color: #a5d6ff; }
+    .c-func    { color: #d2a8ff; font-weight: bold; }
+    .c-string  { color: #7ee787; }
+    .c-comment { color: #8b949e; font-style: italic; }
+
+    .terminal-output-box {
+      background: #04070c;
+      border-top: 1px solid #1a2536;
+      padding: 12px 18px;
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--green);
+      line-height: 1.5;
+    }
+    .laptop-base-tray {
+      width: 106%;
+      height: 16px;
+      margin-left: -3%;
+      background: linear-gradient(180deg, #2b394f 0%, #161e2b 100%);
+      border-radius: 0 0 16px 16px;
+      border: 1px solid #3d4e68;
+      border-top: none;
+      display: flex;
+      justify-content: center;
+    }
+    .laptop-notch {
+      width: 90px;
+      height: 5px;
+      background: #101623;
+      border-radius: 0 0 6px 6px;
+    }
+
+    /* 4. SECTION CARDS */
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .section-card:hover { border-color: var(--cyan); }
+    .sec-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 24px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1.5px solid var(--cyan);
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    /* Timetables */
+    .nav-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .btn-back {
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 700;
+      background: none;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .tt-meta-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .table-container {
+      overflow-x: auto;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    table.official-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+      text-align: center;
+      font-size: 12px;
+    }
+    table.official-table th, table.official-table td {
+      border: 1px solid #1f2c42;
+      padding: 8px 6px;
+    }
+    table.official-table th {
+      background: #0d1421;
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .day-col {
+      background: #111a2a;
+      color: var(--text-light);
+      font-weight: 800;
+      font-size: 13px;
+      width: 60px;
+    }
+    .lunch-cell {
+      background: rgba(254, 231, 92, 0.08);
+      color: var(--yellow);
+      font-weight: 800;
+      letter-spacing: 2px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      padding: 10px 4px;
+      font-size: 11px;
+    }
+    .sub-tag {
+      font-weight: 800;
+      color: #fff;
+      font-size: 13px;
+      display: inline-block;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      transition: all 0.15s;
+    }
+    .sub-tag:hover { background: var(--cyan); color: #000; }
+    .fac-tag {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: monospace;
+      margin-top: 3px;
+    }
+    .batch-box {
+      font-size: 11px;
+      line-height: 1.45;
+      padding: 4px;
+      text-align: left;
+    }
+    .batch-line {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      background: #0a0e17;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border-left: 2.5px solid var(--cyan);
+    }
+    .batch-line.green { border-left-color: var(--green); }
+    .batch-line.purple { border-left-color: #c77dff; }
+
+    /* PPS Compiler Banner */
+    .compiler-launch-card {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.12), rgba(0, 255, 102, 0.08));
+      border: 1.5px solid var(--cyan);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      cursor: pointer;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.1);
+      transition: all 0.2s;
+    }
+    .compiler-launch-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 22px rgba(0, 240, 255, 0.25);
+    }
+
+    /* Units Screen */
+    .unit-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+    .unit-num {
+      width: 42px;
+      height: 42px;
+      background: #151d2d;
+      border-radius: 8px;
+      color: var(--green);
+      font-family: monospace;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Dual Dark C Compilers Screen */
+    .compiler-frame-container {
+      background: #101623;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-top: 10px;
+      box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+    }
+    .compiler-header-bar {
+      background: #090e17;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .compiler-tabs {
+      display: flex;
+      gap: 8px;
+      background: #060a12;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .comp-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .comp-tab-btn.active-tab {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+    .quick-snippet-btn {
+      background: #162033;
+      border: 1px solid #233350;
+      color: #cbd5e1;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .quick-snippet-btn:hover { background: var(--cyan); color: #000; }
+
+    /* PDF View */
+    .upload-cta {
+      background: rgba(0, 255, 102, 0.08);
+      border: 1.5px dashed var(--green);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    .pdf-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pdf-card:hover { border-color: var(--cyan); background: #151d2f; }
+    .btn-action {
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-weight: 700;
+      padding: 7px 11px;
+      border-radius: 8px;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-action:hover { background: var(--cyan); color: #000; }
+
+    /* In-App PDF Reader Modal */
+    #pdf-viewer-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 99999;
+      flex-direction: column;
+      padding: 10px;
+      backdrop-filter: blur(5px);
+    }
+    .modal-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #101623;
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 10px 10px 0 0;
+    }
+    .modal-frame-wrap {
+      flex: 1;
+      background: #000;
+      border-radius: 0 0 10px 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-top: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- ==================== 1. LOCK SCREEN ==================== -->
+  <div id="screen-lock" class="screen active">
+    <div style="text-align:center; margin-top: 30px;">
+      <span class="badge">SSBT'S COET JALGAON • FIRST YEAR</span>
+      <h1 class="app-title">VYAS TIME TABLE</h1>
+      <p class="sub">Department of Computer Engineering</p>
+    </div>
+
+    <div class="glass-card">
+      <label>SECURITY ACCESS PASSWORD</label>
+      <input type="text" id="password-input" class="code-input" placeholder="ENTER PASSWORD (SSBTCOMP)" autocomplete="off" />
+      <div id="lock-error" class="error-box">⚠️ INVALID PASSWORD! Use: SSBTCOMP</div>
+      <button class="btn-primary" onclick="verifyPassword()">UNLOCK SYSTEM →</button>
+    </div>
+  </div>
+
+  <!-- ==================== 2. TEDDY BEAR & BIOMETRIC DOOR ANIMATION ==================== -->
+  <div id="screen-robot" class="screen">
+    <button class="skip-btn" onclick="skipToSections()">Skip ⏭</button>
+    
+    <div style="text-align:center;">
+      <span class="badge">BIOMETRIC SECURITY GATE</span>
+      <h2 style="font-size:20px;">AUTHENTICATING ACCESS</h2>
+    </div>
+
+    <div class="vault-stage">
+      <div class="stage-floor">
+        <div class="grid-lines"></div>
+      </div>
+
+      <!-- Biometric Vault Door -->
+      <div id="vault-door" class="vault-door-frame">
+        <div class="door-inner-glow">⚡ VYAS CORE</div>
+        <div class="door-panel left"></div>
+        <div class="door-panel right"></div>
+        <div id="biometric-lock" class="biometric-scanner">
+          <div class="scan-beam"></div>
+          <span style="font-size:16px;">🔒</span>
+        </div>
+      </div>
+
+      <!-- Walking Teddy Bear Actor -->
+      <div id="teddy-actor" class="teddy-actor">
+        <div id="robot-key" class="floating-key">🗝️</div>
+
+        <svg class="teddy-svg-wrap" viewBox="0 0 100 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g class="t-ears-group">
+            <circle cx="28" cy="28" r="14" fill="#8c471c" stroke="#5a2b0c" stroke-width="2"/>
+            <circle cx="28" cy="28" r="7" fill="#e0a36e"/>
+            <circle cx="76" cy="28" r="14" fill="#8c471c" stroke="#5a2b0c" stroke-width="2"/>
+            <circle cx="76" cy="28" r="7" fill="#e0a36e"/>
+          </g>
+
+          <ellipse cx="52" cy="46" rx="30" ry="26" fill="#a65823" stroke="#5a2b0c" stroke-width="2"/>
+          <ellipse cx="52" cy="53" rx="14" ry="11" fill="#e0a36e"/>
+          <polygon points="48,48 56,48 52,53" fill="#2d1607"/>
+          <path d="M48 55 Q52 58 56 55" stroke="#2d1607" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <circle cx="42" cy="42" r="4" fill="#150a04"/>
+          <circle cx="43" cy="40" r="1.5" fill="#fff"/>
+          <circle cx="62" cy="42" r="4" fill="#150a04"/>
+          <circle cx="63" cy="40" r="1.5" fill="#fff"/>
+
+          <g class="t-body-group">
+            <ellipse cx="52" cy="94" rx="26" ry="30" fill="#a65823" stroke="#5a2b0c" stroke-width="2"/>
+            <ellipse cx="52" cy="95" rx="16" ry="20" fill="#e0a36e"/>
+            <rect x="42" y="94" width="20" height="15" rx="4" fill="#8c471c" stroke="#ffd700" stroke-width="1.5"/>
+            <line x1="45" y1="98" x2="59" y2="98" stroke="#ffd700" stroke-width="1.2"/>
+          </g>
+
+          <g class="t-arm-left">
+            <ellipse cx="23" cy="85" rx="8" ry="18" fill="#8c471c" stroke="#5a2b0c" stroke-width="2" transform="rotate(15 23 85)"/>
+            <circle cx="21" cy="99" r="6" fill="#e0a36e"/>
+          </g>
+          <g id="teddy-right-arm" class="t-arm-right">
+            <ellipse cx="80" cy="85" rx="8" ry="18" fill="#8c471c" stroke="#5a2b0c" stroke-width="2" transform="rotate(-15 80 85)"/>
+            <circle cx="82" cy="99" r="6" fill="#e0a36e"/>
+          </g>
+
+          <g class="t-leg-left">
+            <ellipse cx="38" cy="126" rx="9" ry="18" fill="#8c471c" stroke="#5a2b0c" stroke-width="2"/>
+            <circle cx="38" cy="138" r="6" fill="#e0a36e"/>
+          </g>
+          <g class="t-leg-right">
+            <ellipse cx="66" cy="126" rx="9" ry="18" fill="#8c471c" stroke="#5a2b0c" stroke-width="2"/>
+            <circle cx="66" cy="138" r="6" fill="#e0a36e"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="status-hud">
+      <div id="hud-spinner" class="spinner"></div>
+      <span id="hud-text">Teddy Bear is waddling toward biometric security door...</span>
+    </div>
+  </div>
+
+  <!-- ==================== 3. LAPTOP C PROGRAMMING ANIMATION ==================== -->
+  <div id="screen-laptop" class="screen">
+    <button class="skip-btn" onclick="skipToSections()">Skip ⏭</button>
+
+    <div style="text-align:center; margin-bottom: 12px;">
+      <span class="badge" style="color:var(--green); border-color:var(--green);">C COMPILER KERNEL</span>
+      <h2 style="font-size:20px;">COMPILING SYSTEM ENTRY</h2>
+    </div>
+
+    <div class="laptop-showcase">
+      <div class="laptop-lid">
+        <div class="editor-top-bar">
+          <div class="window-dots">
+            <div class="w-dot r"></div>
+            <div class="w-dot y"></div>
+            <div class="w-dot g"></div>
+          </div>
+          <div class="editor-tab">
+            <span style="color:#00f0ff;">⚡</span> main.c
+          </div>
+        </div>
+        
+        <div id="c-code-screen" class="editor-body"></div>
+        <div id="c-terminal-output" class="terminal-output-box" style="display:none;"></div>
+      </div>
+      <div class="laptop-base-tray">
+        <div class="laptop-notch"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 4. SECTION SELECTION SCREEN (WITHOUT CLASS TEACHER NAMES) ==================== -->
+  <div id="screen-sections" class="screen">
+    <div style="margin-bottom: 20px;">
+      <span style="color:var(--text-dim); font-size:12px; font-weight:700;">FE COMPUTER • AY 2026-27</span>
+      <h2 style="font-size:22px; margin-top:2px;">Select Class Division</h2>
+    </div>
+
+    <!-- Division E Card -->
+    <div class="section-card" onclick="openDivision('screen-timetable-e')">
+      <div class="sec-badge">E</div>
+      <div style="flex:1;">
+        <h3 style="font-size:17px; color:var(--cyan);">Division E</h3>
+        <p style="color:var(--text-dim); font-size:12px;">Computer Engineering • Class Room 230</p>
+      </div>
+      <span style="color:var(--cyan); font-size:20px;">→</span>
+    </div>
+
+    <!-- Division F Card -->
+    <div class="section-card" onclick="openDivision('screen-timetable-f')">
+      <div class="sec-badge" style="border-color:#c77dff; color:#c77dff;">F</div>
+      <div style="flex:1;">
+        <h3 style="font-size:17px; color:#c77dff;">Division F</h3>
+        <p style="color:var(--text-dim); font-size:12px;">Computer Engineering • Class Room 234</p>
+      </div>
+      <span style="color:var(--cyan); font-size:20px;">→</span>
+    </div>
+
+    <!-- Division G Card -->
+    <div class="section-card" onclick="openDivision('screen-timetable-g')">
+      <div class="sec-badge">G</div>
+      <div style="flex:1;">
+        <h3 style="font-size:17px; color:var(--green);">Division G</h3>
+        <p style="color:var(--text-dim); font-size:12px;">Computer Engineering • Class Room 236</p>
+      </div>
+      <span style="color:var(--cyan); font-size:20px;">→</span>
+    </div>
+  </div>
+
+  <!-- ==================== 5A. DIVISION E OFFICIAL TIMETABLE ==================== -->
+  <div id="screen-timetable-e" class="screen">
+    <div class="nav-header">
+      <button class="btn-back" onclick="switchScreen('screen-sections')">‹ BACK TO DIVISIONS</button>
+      <span style="font-size:12px; color:var(--cyan); font-weight:700;">W.E.F.: 28/09/2026</span>
+    </div>
+
+    <div class="tt-meta-card">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div><b>CLASS:</b> FE &nbsp;|&nbsp; <b>DIVISION:</b> E &nbsp;|&nbsp; <b>BRANCH:</b> COMPUTER</div>
+        <div><b>CLASS ROOM NO.:</b> 230</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(254, 231, 92, 0.08); border:1px solid rgba(254, 231, 92, 0.25); padding:8px 12px; border-radius:8px; font-size:12px; color:var(--yellow); margin-bottom:10px;">
+      💡 <b>Tap PPS</b> to access the <b>Dual Dark C Compilers</b> and Unit Notes 1 to 5.
+    </div>
+
+    <div class="table-container">
+      <table class="official-table">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:55px;">Time</th>
+            <th>11.00 - 12.00</th>
+            <th>12.00 - 1.00</th>
+            <th rowspan="2" style="width:36px;">1.00 - 1.45</th>
+            <th>1.45 - 2.45</th>
+            <th>2.45 - 3.45</th>
+            <th>3.45 - 4.45</th>
+            <th>4.45 - 5.45</th>
+          </tr>
+          <tr><th>1</th><th>2</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="day-col">MON</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">CUN</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">RC</div></td>
+            <td rowspan="6" class="lunch-cell">LUNCH BREAK</td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line"><span><b>E1:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-SC</span><span>(244)</span></div>
+                <div class="batch-line"><span><b>E2:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-PRS</span><span>(230)</span></div>
+                <div class="batch-line"><span><b>E3:</b> LIB</span></div>
+              </div>
+            </td>
+            <td colspan="2" style="color:var(--text-dim);">-</td>
+          </tr>
+          <tr>
+            <td class="day-col">TUE</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">SSP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">CUN</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">PRS</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">RC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line purple"><span><b>E1:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-JRT</span><span>(238)</span></div>
+                <div class="batch-line purple"><span><b>E2:</b> LIB</span></div>
+                <div class="batch-line purple"><span><b>E3:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-TYC</span><span>(244)</span></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">WED</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">SSP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">RC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>E1:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-RC</span><span>(217)</span></div>
+                <div class="batch-line green"><span><b>E2:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-CUN</span><span>(242)</span></div>
+                <div class="batch-line green"><span><b>E3:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-PRS</span><span>(128)</span></div>
+              </div>
+            </td>
+            <td colspan="2" style="color:var(--text-dim);">-</td>
+          </tr>
+          <tr>
+            <td class="day-col">THU</td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>E1:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-CUN</span><span>(242)</span></div>
+                <div class="batch-line green"><span><b>E2:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-PRS</span><span>(128)</span></div>
+                <div class="batch-line green"><span><b>E3:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-NAB</span><span>(217)</span></div>
+              </div>
+            </td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">PRS</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">SSP</div></td>
+            <td colspan="2">
+              <span class="sub-tag" onclick="openSubjectUnits('WPL')" style="color:var(--green); border-color:var(--green);">WPL</span>
+              <div class="fac-tag" style="color:var(--green);">DBS / PRS / RC</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">FRI</td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line"><span><b>E1:</b> LIB</span></div>
+                <div class="batch-line"><span><b>E2:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-SC</span><span>(244)</span></div>
+                <div class="batch-line"><span><b>E3:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-UMP</span><span>(230)</span></div>
+              </div>
+            </td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>E1:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-PRS</span><span>(128)</span></div>
+                <div class="batch-line green"><span><b>E2:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-RC</span><span>(217)</span></div>
+                <div class="batch-line green"><span><b>E3:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-CUN</span><span>(242)</span></div>
+              </div>
+            </td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span><div class="fac-tag">SB</div></td>
+            <td style="color:var(--text-dim);">-</td>
+          </tr>
+          <tr>
+            <td class="day-col">SAT</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">SSP</div></td>
+            <td><span class="sub-tag" style="border-color:#ffbd2e; color:#ffbd2e;">TGS</span><div class="fac-tag">Guardian Hour</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">CUN</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">PRS</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span><div class="fac-tag">SC</div></td>
+            <td style="color:var(--text-dim);">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== 5B. DIVISION F OFFICIAL TIMETABLE ==================== -->
+  <div id="screen-timetable-f" class="screen">
+    <div class="nav-header">
+      <button class="btn-back" onclick="switchScreen('screen-sections')">‹ BACK TO DIVISIONS</button>
+      <span style="font-size:12px; color:#c77dff; font-weight:700;">W.E.F.: 31/10/2026</span>
+    </div>
+
+    <div class="tt-meta-card">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div><b>CLASS:</b> FE &nbsp;|&nbsp; <b>DIVISION:</b> F &nbsp;|&nbsp; <b>BRANCH:</b> COMPUTER</div>
+        <div><b>CLASS ROOM NO.:</b> 234</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(254, 231, 92, 0.08); border:1px solid rgba(254, 231, 92, 0.25); padding:8px 12px; border-radius:8px; font-size:12px; color:var(--yellow); margin-bottom:10px;">
+      💡 <b>Tap any subject (EM-I, PPS, BEEE, EP, etc.)</b> to view units or run the C compilers.
+    </div>
+
+    <div class="table-container">
+      <table class="official-table">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:55px;">Time</th>
+            <th>11.00 - 12.00</th>
+            <th>12.00 - 1.00</th>
+            <th rowspan="2" style="width:36px;">1.00 - 1.45</th>
+            <th>1.45 - 2.45</th>
+            <th>2.45 - 3.45</th>
+            <th>3.45 - 4.45</th>
+            <th>4.45 - 5.45</th>
+          </tr>
+          <tr><th>1</th><th>2</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="day-col">MON</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">DDP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td rowspan="6" class="lunch-cell">LUNCH BREAK</td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>F1:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-DST</span><span>(128)</span></div>
+                <div class="batch-line green"><span><b>F2:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-PSC</span><span>(217)</span></div>
+                <div class="batch-line green"><span><b>F3:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-KSP</span><span>(242)</span></div>
+              </div>
+            </td>
+            <td colspan="2" style="color:var(--text-dim);">-</td>
+          </tr>
+          <tr>
+            <td class="day-col">TUE</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">PSC</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">KSP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span><div class="fac-tag">SC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line purple"><span><b>F1:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-TYC</span><span>(244)</span></div>
+                <div class="batch-line purple"><span><b>F2:</b> LIB</span></div>
+                <div class="batch-line purple"><span><b>F3:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-CUN</span><span>(234)</span></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">WED</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">KSP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">DDP</div></td>
+            <td colspan="2"><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">PSC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>F1:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-CUN</span><span>(242)</span></div>
+                <div class="batch-line green"><span><b>F2:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-SCN</span><span>(128)</span></div>
+                <div class="batch-line green"><span><b>F3:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-PSC</span><span>(217)</span></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">THU</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">PSC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line"><span><b>F1:</b> LIB</span></div>
+                <div class="batch-line"><span><b>F2:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-TYC</span><span>(234)</span></div>
+                <div class="batch-line"><span><b>F3:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-SC</span><span>(244)</span></div>
+              </div>
+            </td>
+            <td colspan="2">
+              <span class="sub-tag" onclick="openSubjectUnits('WPL')" style="color:var(--green); border-color:var(--green);">WPL</span>
+              <div class="fac-tag" style="color:var(--green);">DBS / DST / PSC</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">FRI</td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>F1:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-PSC</span><span>(217)</span></div>
+                <div class="batch-line green"><span><b>F2:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-KSP</span><span>(242)</span></div>
+                <div class="batch-line green"><span><b>F3:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-DST</span><span>(128)</span></div>
+              </div>
+            </td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">DDP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span><div class="fac-tag">UMP</div></td>
+            <td style="color:var(--text-dim);">-</td>
+          </tr>
+          <tr>
+            <td class="day-col">SAT</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">KSP</div></td>
+            <td><span class="sub-tag" style="border-color:#ffbd2e; color:#ffbd2e;">TGS</span><div class="fac-tag">Guardian Hour</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span><div class="fac-tag">SC</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span><div class="fac-tag">UMP</div></td>
+            <td colspan="2" style="color:var(--text-dim);">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== 5C. DIVISION G OFFICIAL TIMETABLE ==================== -->
+  <div id="screen-timetable-g" class="screen">
+    <div class="nav-header">
+      <button class="btn-back" onclick="switchScreen('screen-sections')">‹ BACK TO DIVISIONS</button>
+      <span style="font-size:12px; color:var(--green); font-weight:700;">W.E.F.: 31/10/2026</span>
+    </div>
+
+    <div class="tt-meta-card">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div><b>CLASS:</b> FE &nbsp;|&nbsp; <b>DIVISION:</b> G &nbsp;|&nbsp; <b>BRANCH:</b> COMPUTER</div>
+        <div><b>CLASS ROOM NO.:</b> 236</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(254, 231, 92, 0.08); border:1px solid rgba(254, 231, 92, 0.25); padding:8px 12px; border-radius:8px; font-size:12px; color:var(--yellow); margin-bottom:10px;">
+      💡 <b>Tap PPS</b> to access the <b>Dual Dark C Compilers</b> and Unit Notes 1 to 5.
+    </div>
+
+    <div class="table-container">
+      <table class="official-table">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:55px;">Time</th>
+            <th>11.00 - 12.00</th>
+            <th>12.00 - 1.00</th>
+            <th rowspan="2" style="width:36px;">1.00 - 1.45</th>
+            <th>1.45 - 2.45</th>
+            <th>2.45 - 3.45</th>
+            <th>3.45 - 4.45</th>
+            <th>4.45 - 5.45</th>
+          </tr>
+          <tr><th>1</th><th>2</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="day-col">MON</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">DDP</div></td>
+            <td rowspan="6" class="lunch-cell">LUNCH BREAK</td>
+            <td colspan="2"><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">PSC</div></td>
+            <td colspan="2" style="color:var(--text-dim);">-</td>
+          </tr>
+          <tr>
+            <td class="day-col">TUE</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">KSP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">PSC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line"><span><b>G1:</b> LIB</span></div>
+                <div class="batch-line"><span><b>G2:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-CUN</span><span>(236)</span></div>
+                <div class="batch-line"><span><b>G3:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-TYC</span><span>(244)</span></div>
+              </div>
+            </td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>G1:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-PSC</span><span>(217)</span></div>
+                <div class="batch-line green"><span><b>G2:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-DST</span><span>(128)</span></div>
+                <div class="batch-line green"><span><b>G3:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-KSP</span><span>(242)</span></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">WED</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span><div class="fac-tag">PSC</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">DDP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span><div class="fac-tag">SC</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>G1:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-CUN</span><span>(242)</span></div>
+                <div class="batch-line green"><span><b>G2:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-PSC</span><span>(217)</span></div>
+                <div class="batch-line green"><span><b>G3:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-SCN</span><span>(128)</span></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">THU</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('PPS')" style="border-color:var(--green); color:var(--green);">PPS 💻</span><div class="fac-tag">DDP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line"><span><b>G1:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-TYC</span><span>(236)</span></div>
+                <div class="batch-line"><span><b>G2:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-SC</span><span>(244)</span></div>
+                <div class="batch-line"><span><b>G3:</b> LIB</span></div>
+              </div>
+            </td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line green"><span><b>G1:</b> <span class="sub-tag" onclick="openSubjectUnits('PPS')">PPS</span>-SCN</span><span>(128)</span></div>
+                <div class="batch-line green"><span><b>G2:</b> <span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span>-KSP</span><span>(242)</span></div>
+                <div class="batch-line green"><span><b>G3:</b> <span class="sub-tag" onclick="openSubjectUnits('BEEE')">BEEE</span>-PSC</span><span>(217)</span></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">FRI</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">KSP</div></td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EM-I')">EM-I</span><div class="fac-tag">JRT</div></td>
+            <td colspan="2">
+              <div class="batch-box">
+                <div class="batch-line"><span><b>G1:</b> <span class="sub-tag" onclick="openSubjectUnits('ENG')">ENG</span>-TYC</span><span>(244)</span></div>
+                <div class="batch-line"><span><b>G2:</b> LIB</span></div>
+                <div class="batch-line"><span><b>G3:</b> <span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span>-SB</span><span>(236)</span></div>
+              </div>
+            </td>
+            <td colspan="2">
+              <span class="sub-tag" onclick="openSubjectUnits('WPL')" style="color:var(--green); border-color:var(--green);">WPL</span>
+              <div class="fac-tag" style="color:var(--green);">DBS / DST / PSC</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="day-col">SAT</td>
+            <td><span class="sub-tag" onclick="openSubjectUnits('EP')">EP</span><div class="fac-tag">KSP</div></td>
+            <td><span class="sub-tag" style="border-color:#ffbd2e; color:#ffbd2e;">TGS</span><div class="fac-tag">Guardian Hour</div></td>
+            <td colspan="2"><span class="sub-tag" onclick="openSubjectUnits('CC')">CC</span><div class="fac-tag">UMP</div></td>
+            <td colspan="2" style="color:var(--text-dim);">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== 6. UNITS SCREEN ==================== -->
+  <div id="screen-units" class="screen">
+    <div class="nav-header">
+      <button class="btn-back" onclick="returnToActiveTimetable()">‹ BACK TO TIMETABLE</button>
+      <h3 id="units-subject-title" style="font-size:16px; color:var(--cyan);">Subject Units</h3>
+    </div>
+    <div id="units-list"></div>
+  </div>
+
+  <!-- ==================== 7. DUAL DARK C COMPILERS ==================== -->
+  <div id="screen-compiler" class="screen">
+    <div class="nav-header">
+      <button class="btn-back" onclick="switchScreen('screen-units')">‹ BACK TO PPS UNITS</button>
+      <div style="text-align:right;">
+        <span style="font-size:12px; color:var(--green); font-weight:700;">PPS PRACTICAL LAB (C11 / C17)</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:10px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+      <span style="font-size:11px; color:var(--text-dim); font-weight:700;">LAB SNIPPETS:</span>
+      <button class="quick-snippet-btn" onclick="copySnippet('hello')">Hello World</button>
+      <button class="quick-snippet-btn" onclick="copySnippet('prime')">Prime Check</button>
+      <button class="quick-snippet-btn" onclick="copySnippet('factorial')">Factorial</button>
+      <button class="quick-snippet-btn" onclick="copySnippet('fibonacci')">Fibonacci</button>
+    </div>
+
+    <div class="compiler-frame-container">
+      <div class="compiler-header-bar">
+        <div class="compiler-tabs">
+          <button id="tab-comp-1" class="comp-tab-btn active-tab" onclick="switchDarkCompiler(1)">⚡ Dark Compiler 1</button>
+          <button id="tab-comp-2" class="comp-tab-btn" onclick="switchDarkCompiler(2)">🚀 Dark Compiler 2</button>
+        </div>
+        <button class="btn-action" onclick="openExternalCompiler()" style="padding:5px 9px; font-size:11px;">↗ Fullscreen Tab</button>
+      </div>
+
+      <div id="wrapper-comp-1" style="display:block;">
+        <iframe id="c-compiler-iframe-1" src="about:blank" style="width:100%; height:580px; border:none; background:#141b26;" allow="clipboard-write"></iframe>
+      </div>
+
+      <div id="wrapper-comp-2" style="display:none;">
+        <iframe id="c-compiler-iframe-2" src="about:blank" style="width:100%; height:580px; border:none; background:#111622;" allow="clipboard-write"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 8. PDF HUB SCREEN ==================== -->
+  <div id="screen-pdf" class="screen">
+    <div class="nav-header">
+      <button class="btn-back" onclick="switchScreen('screen-units')">‹ BACK TO UNITS</button>
+      <h3 id="pdf-view-title" style="font-size:16px;">Unit Notes</h3>
+    </div>
+
+    <input type="file" id="real-file-upload" accept="application/pdf" style="display:none;" onchange="handleFileUpload(event)" />
+
+    <div class="upload-cta" onclick="document.getElementById('real-file-upload').click()">
+      <span style="font-size: 26px;">📤</span>
+      <p style="color:var(--green); font-weight:700; font-size:14px; margin-top:4px;">Upload Real PDF Notes</p>
+      <span style="font-size: 11px; color: var(--text-dim);">Tap to upload any PDF from your device. Tap any card below to open and read.</span>
+    </div>
+
+    <h4 style="font-size:13px; color:var(--cyan); letter-spacing:1px; margin-bottom:12px;">AVAILABLE PDF NOTES (TAP TO OPEN)</h4>
+    <div id="pdf-items-container"></div>
+  </div>
+
+  <!-- ==================== 9. IN-APP PDF VIEWER MODAL ==================== -->
+  <div id="pdf-viewer-modal">
+    <div class="modal-bar">
+      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">
+        <span id="modal-pdf-title" style="color:var(--cyan); font-weight:700; font-size:13px;">Document Viewer</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="modal-tab-btn" class="btn-action" style="padding:6px 10px; font-size:11px;">↗ Open in Tab</button>
+        <button onclick="closePdfModal()" style="background:#ff4560; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-weight:800; cursor:pointer;">✕ Close</button>
+      </div>
+    </div>
+    <div class="modal-frame-wrap">
+      <iframe id="pdf-iframe" style="width:100%; height:100%; border:none; background:#fff;" src="about:blank"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let activeTimetableScreen = 'screen-timetable-e';
+  let currentSubject = 'PPS';
+  let currentUnit = 'Unit 1';
+  let currentActiveBlobUrl = null;
+  let currentCompilerTab = 1;
+
+  function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function skipToSections() {
+    switchScreen('screen-sections');
+  }
+
+  function verifyPassword() {
+    const input = document.getElementById('password-input').value.trim();
+    if (input.toUpperCase() === 'SSBTCOMP') {
+      document.getElementById('lock-error').style.display = 'none';
+      switchScreen('screen-robot');
+      startTeddyBearSequence();
+    } else {
+      document.getElementById('lock-error').style.display = 'block';
+    }
+  }
+
+  function startTeddyBearSequence() {
+    const teddy = document.getElementById('teddy-actor');
+    const key = document.getElementById('robot-key');
+    const scanner = document.getElementById('biometric-lock');
+    const door = document.getElementById('vault-door');
+    const hud = document.getElementById('hud-text');
+
+    teddy.style.transform = 'translateX(0px)';
+    teddy.classList.add('teddy-waddling');
+    key.className = 'floating-key';
+    scanner.classList.remove('unlocked');
+    door.classList.remove('door-open');
+    hud.innerText = "[1/4] Teddy Bear is waddling toward biometric vault door...";
+
+    setTimeout(() => {
+      teddy.style.transform = 'translateX(180px)';
+    }, 200);
+
+    setTimeout(() => {
+      teddy.classList.remove('teddy-waddling');
+      hud.innerText = "[2/4] Teddy reaches into front pocket & pulls out the Master Key...";
+      key.className = 'floating-key key-in-hand';
+      key.style.top = '78px';
+      key.style.left = '64px';
+    }, 3600);
+
+    setTimeout(() => {
+      hud.innerText = "[3/4] Key inserted into biometric lock! Scanning credentials...";
+      key.className = 'floating-key key-inserted';
+    }, 5100);
+
+    setTimeout(() => {
+      scanner.classList.add('unlocked');
+      scanner.innerHTML = '<span style="font-size:16px;">🔓</span>';
+      door.classList.add('door-open');
+      hud.innerText = "⚡ [4/4] ACCESS GRANTED! Vault Doors Opened.";
+    }, 6600);
+
+    setTimeout(() => {
+      switchScreen('screen-laptop');
+      startLaptopCAnimation();
+    }, 8200);
+  }
+
+  function startLaptopCAnimation() {
+    const codeScreen = document.getElementById('c-code-screen');
+    const terminalOut = document.getElementById('c-terminal-output');
+    codeScreen.innerHTML = "";
+    terminalOut.style.display = "none";
+    terminalOut.innerHTML = "";
+
+    const lines = [
+      '<span class="c-comment">// Loading SSBT First Year Engineering System</span>',
+      '<span class="c-keyword">#include</span> <span class="c-header">&lt;stdio.h&gt;</span>',
+      '<span class="c-keyword">#include</span> <span class="c-header">&lt;vyas_kernel.h&gt;</span>',
+      '',
+      '<span class="c-keyword">int</span> <span class="c-func">main</span>() {',
+      '    <span class="c-comment">/* Authenticated successfully via Biometric Door */</span>',
+      '    <span class="c-func">printf</span>(<span class="c-string">"\\n====================================\\n"</span>);',
+      '    <span class="c-func">printf</span>(<span class="c-string">"       WELCOME TO VYAS (SSBT)       \\n"</span>);',
+      '    <span class="c-func">printf</span>(<span class="c-string">"====================================\\n"</span>);',
+      '    <span class="c-func">printf</span>(<span class="c-string">"&gt;&gt; Academic Year : 2026-27 (Term-I)\\n"</span>);',
+      '    <span class="c-func">printf</span>(<span class="c-string">"&gt;&gt; Department    : Computer Engg (E, F, G)\\n"</span>);',
+      '    <span class="c-keyword">return</span> <span class="c-header">0</span>;',
+      '}'
+    ];
+
+    let lineIndex = 0;
+    const lineTimer = setInterval(() => {
+      if (lineIndex < lines.length) {
+        codeScreen.innerHTML += lines[lineIndex] + "\n";
+        lineIndex++;
+      } else {
+        clearInterval(lineTimer);
+        setTimeout(() => {
+          terminalOut.style.display = "block";
+          terminalOut.innerHTML = `
+            <div><span style="color:#60a5fa;">$ gcc main.c -o vyas && ./vyas</span></div>
+            <div style="color:#fee75c;">====================================</div>
+            <div style="color:#00ff66; font-weight:800; font-size:14px;">       WELCOME TO VYAS (SSBT)       </div>
+            <div style="color:#fee75c;">====================================</div>
+            <div>&gt;&gt; Academic Year : 2026-27 (Term-I)</div>
+            <div>&gt;&gt; Department    : Computer Engg (Divisions E, F, G)</div>
+            <div style="color:#38bdf8; margin-top:4px;">✔ Process exited with status 0. Launching timetable...</div>
+          `;
+          setTimeout(() => switchScreen('screen-sections'), 2400);
+        }, 500);
+      }
+    }, 110);
+  }
+
+  function openDivision(screenId) {
+    activeTimetableScreen = screenId;
+    switchScreen(screenId);
+  }
+
+  function returnToActiveTimetable() {
+    switchScreen(activeTimetableScreen);
+  }
+
+  function openSubjectUnits(subjectCode) {
+    currentSubject = subjectCode;
+    document.getElementById('units-subject-title').innerText = `${subjectCode} - Units (1 to 5)`;
+
+    const unitsList = document.getElementById('units-list');
+    unitsList.innerHTML = "";
+
+    if (subjectCode === 'PPS') {
+      const compilerCard = document.createElement('div');
+      compilerCard.className = 'compiler-launch-card';
+      compilerCard.onclick = () => openCCompiler();
+      compilerCard.innerHTML = `
+        <div style="font-size:32px;">💻</div>
+        <div style="flex:1;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h4 style="font-size:16px; color:var(--cyan); font-weight:800;">Dual Dark C Compilers (IDE)</h4>
+            <span style="background:rgba(0,255,102,0.15); color:var(--green); font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px; border:1px solid var(--green);">2 ENGINES</span>
+          </div>
+          <p style="color:var(--text-dim); font-size:12px; margin-top:3px;">Two fast dark-mode GCC compilers with stdin input and live execution</p>
+        </div>
+        <button class="btn-action" style="background:var(--cyan); color:#000; font-weight:800;">OPEN COMPILERS →</button>
+      `;
+      unitsList.appendChild(compilerCard);
+    }
+
+    ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5'].forEach((unit, idx) => {
+      const card = document.createElement('div');
+      card.className = "unit-card";
+      card.onclick = () => openUnitPdfHub(unit);
+      card.innerHTML = `
+        <div class="unit-num">0${idx + 1}</div>
+        <div style="flex:1;">
+          <h4 style="font-size:15px; color:#fff;">${unit}</h4>
+          <p style="color:var(--text-dim); font-size:12px;">Notes, assignments and PDFs</p>
+        </div>
+        <span style="color:var(--cyan); font-size:20px;">→</span>
+      `;
+      unitsList.appendChild(card);
+    });
+
+    switchScreen('screen-units');
+  }
+
+  function openCCompiler() {
+    const iframe1 = document.getElementById('c-compiler-iframe-1');
+    if (!iframe1.src || iframe1.src === 'about:blank') {
+      iframe1.src = 'https://onecompiler.com/embed/c?listenToEvents=true&hideNew=true&hideTitle=true&theme=dark';
+    }
+    switchDarkCompiler(1);
+    switchScreen('screen-compiler');
+  }
+
+  function switchDarkCompiler(tabNum) {
+    currentCompilerTab = tabNum;
+    const tab1 = document.getElementById('tab-comp-1');
+    const tab2 = document.getElementById('tab-comp-2');
+    const wrap1 = document.getElementById('wrapper-comp-1');
+    const wrap2 = document.getElementById('wrapper-comp-2');
+
+    if (tabNum === 1) {
+      tab1.classList.add('active-tab');
+      tab2.classList.remove('active-tab');
+      wrap1.style.display = 'block';
+      wrap2.style.display = 'none';
+    } else {
+      tab2.classList.add('active-tab');
+      tab1.classList.remove('active-tab');
+      wrap2.style.display = 'block';
+      wrap1.style.display = 'none';
+
+      const iframe2 = document.getElementById('c-compiler-iframe-2');
+      if (!iframe2.src || iframe2.src === 'about:blank') {
+        iframe2.src = 'https://www.jdoodle.com/embed/v0/2p9';
+      }
+    }
+  }
+
+  function openExternalCompiler() {
+    if (currentCompilerTab === 1) {
+      window.open('https://onecompiler.com/c', '_blank');
+    } else {
+      window.open('https://www.onlinegdb.com/online_c_compiler', '_blank');
+    }
+  }
+
+  const CODE_SNIPPETS = {
+    hello: `#include <stdio.h>\n\nint main() {\n    printf("Welcome to SSBT COET - PPS Lab!\\n");\n    return 0;\n}`,
+    prime: `#include <stdio.h>\n\nint main() {\n    int n = 29, isPrime = 1;\n    for(int i = 2; i <= n/2; ++i) {\n        if(n % i == 0) { isPrime = 0; break; }\n    }\n    if (isPrime) printf("%d is a Prime number.\\n", n);\n    else printf("%d is Not a Prime number.\\n", n);\n    return 0;\n}`,
+    factorial: `#include <stdio.h>\n\nint main() {\n    int n = 5;\n    long long fact = 1;\n    for(int i = 1; i <= n; ++i) fact *= i;\n    printf("Factorial of %d = %lld\\n", n, fact);\n    return 0;\n}`,
+    fibonacci: `#include <stdio.h>\n\nint main() {\n    int n = 7, t1 = 0, t2 = 1, nextTerm;\n    printf("Fibonacci Series: ");\n    for (int i = 1; i <= n; ++i) {\n        printf("%d ", t1);\n        nextTerm = t1 + t2;\n        t1 = t2;\n        t2 = nextTerm;\n    }\n    printf("\\n");\n    return 0;\n}`
+  };
+
+  function copySnippet(type) {
+    const code = CODE_SNIPPETS[type];
+    if (code) {
+      navigator.clipboard.writeText(code).then(() => {
+        alert(`📋 ${type.toUpperCase()} program copied! Paste it into the editor & click Run.`);
+      }).catch(() => {
+        alert(code);
+      });
+    }
+  }
+
+  let PDF_DATABASE = {
+    'EM-I-Unit 1': [{ name: 'EM-I_Unit1_Differential_Calculus.pdf' }],
+    'EP-Unit 1': [{ name: 'EP_Unit1_Lasers_and_Optics.pdf' }],
+    'BEEE-Unit 1': [{ name: 'BEEE_Unit1_DC_Circuits.pdf' }],
+    'PPS-Unit 1': [{ name: 'PPS_Unit1_Intro_to_C_Programming.pdf' }],
+    'ENG-Unit 1': [{ name: 'ENG_Unit1_Communication_Skills.pdf' }],
+    'WPL-Unit 1': [{ name: 'WPL_Carpentry_Fitting_Manual.pdf' }],
+    'CC-Unit 1': [{ name: 'CC_Unit1_Professional_Ethics.pdf' }]
+  };
+
+  function createRealPdfBlob(title, subject, unit) {
+    const streamContent = `BT\n/F1 20 Tf\n50 720 Td\n(SSBT COET - Computer Engineering) Tj\n/F1 15 Tf\n0 -35 Td\n(Subject: ${subject} | ${unit}) Tj\n/F1 12 Tf\n0 -30 Td\n(Document: ${title}) Tj\n0 -25 Td\n(Official First Year Engineering Study Notes) Tj\n0 -20 Td\n(-----------------------------------------------------) Tj\n0 -25 Td\n(Unit Contents and Syllabus topics are ready for study.) Tj\nET`;
+    const pdfData = `%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length ${streamContent.length} >>\nstream\n${streamContent}\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000266 00000 n \n0000000350 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n440\n%%EOF`;
+    return new Blob([pdfData], { type: 'application/pdf' });
+  }
+
+  function openUnitPdfHub(unitName) {
+    currentUnit = unitName;
+    document.getElementById('pdf-view-title').innerText = `${currentSubject} • ${unitName}`;
+    renderPdfList();
+    switchScreen('screen-pdf');
+  }
+
+  function renderPdfList() {
+    const key = `${currentSubject}-${currentUnit}`;
+    const container = document.getElementById('pdf-items-container');
+    container.innerHTML = "";
+
+    const files = PDF_DATABASE[key] || [];
+
+    if (files.length === 0) {
+      container.innerHTML = `<p style="text-align:center; color:var(--text-dim); font-size:13px; margin-top:20px;">No PDFs uploaded for ${currentSubject} ${currentUnit} yet. Use the upload box above!</p>`;
+      return;
+    }
+
+    files.forEach((file, index) => {
+      const item = document.createElement('div');
+      item.className = 'pdf-card';
+      item.innerHTML = `
+        <div style="font-size:24px; cursor:pointer;" onclick="openPdfViewer(${index})">📄</div>
+        <div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openPdfViewer(${index})">
+          <div style="font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${file.name}</div>
+          <div style="font-size:11px; color:var(--green); margin-top:2px;">👁️ Click to Open & Read</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn-action" onclick="event.stopPropagation(); openPdfViewer(${index})">👁️ Open</button>
+          <button class="btn-action" style="border-color:#3e4c63; color:#fff;" onclick="event.stopPropagation(); downloadPdfFile(${index})">📥 Save</button>
+        </div>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const key = `${currentSubject}-${currentUnit}`;
+    if (!PDF_DATABASE[key]) {
+      PDF_DATABASE[key] = [];
+    }
+
+    PDF_DATABASE[key].push({
+      name: file.name,
+      blob: file
+    });
+
+    renderPdfList();
+    alert(`✅ "${file.name}" uploaded successfully! Tap it anytime to open and read.`);
+    event.target.value = "";
+  }
+
+  function openPdfViewer(index) {
+    const key = `${currentSubject}-${currentUnit}`;
+    const file = PDF_DATABASE[key][index];
+    if (!file) return;
+
+    let blob = file.blob;
+    if (!blob) {
+      blob = createRealPdfBlob(file.name, currentSubject, currentUnit);
+      file.blob = blob;
+    }
+
+    if (currentActiveBlobUrl) {
+      URL.revokeObjectURL(currentActiveBlobUrl);
+    }
+
+    currentActiveBlobUrl = URL.createObjectURL(blob);
+
+    document.getElementById('modal-pdf-title').innerText = file.name;
+    document.getElementById('pdf-iframe').src = currentActiveBlobUrl;
+    document.getElementById('modal-tab-btn').onclick = () => window.open(currentActiveBlobUrl, '_blank');
+    document.getElementById('pdf-viewer-modal').style.display = 'flex';
+  }
+
+  function closePdfModal() {
+    document.getElementById('pdf-viewer-modal').style.display = 'none';
+    document.getElementById('pdf-iframe').src = 'about:blank';
+  }
+
+  function downloadPdfFile(index) {
+    const key = `${currentSubject}-${currentUnit}`;
+    const file = PDF_DATABASE[key][index];
+    if (!file) return;
+
+    let blob = file.blob;
+    if (!blob) {
+      blob = createRealPdfBlob(file.name, currentSubject, currentUnit);
+      file.blob = blob;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+</script>
+
+</body>
+</html>
