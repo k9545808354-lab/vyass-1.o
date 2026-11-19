@@ -1,0 +1,8 @@
+{
+  "name": "Vyas Timetable",
+  "description": "SSBT COET First Year Computer Engineering official timetable, unit notes PDF hub, and dual dark C compilers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

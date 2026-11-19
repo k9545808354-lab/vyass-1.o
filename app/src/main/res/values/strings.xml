@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vyas Timetable</string>
+    <string name="badge_college">SSBT\'S COET JALGAON • FIRST YEAR</string>
+    <string name="app_title_main">VYAS TIME TABLE</string>
+    <string name="app_subtitle_dept">Department of Computer Engineering</string>
+    <string name="label_security_password">SECURITY ACCESS PASSWORD</string>
+    <string name="hint_password">ENTER PASSWORD (SSBTCOMP)</string>
+    <string name="error_invalid_password">INVALID PASSWORD! Use: SSBTCOMP</string>
+    <string name="btn_unlock_system">UNLOCK SYSTEM →</string>
+    <string name="btn_skip">Skip ⏭</string>
+    <string name="badge_biometric_gate">BIOMETRIC SECURITY GATE</string>
+    <string name="title_authenticating">AUTHENTICATING ACCESS</string>
+    <string name="badge_c_kernel">C COMPILER KERNEL</string>
+    <string name="title_compiling_entry">COMPILING SYSTEM ENTRY</string>
+    <string name="header_fe_computer">FE COMPUTER • AY 2026-27</string>
+    <string name="title_select_division">Select Class Division</string>
+    <string name="btn_back_divisions">‹ BACK TO DIVISIONS</string>
+    <string name="btn_back_timetable">‹ BACK TO TIMETABLE</string>
+    <string name="btn_back_pps_units">‹ BACK TO PPS UNITS</string>
+    <string name="btn_back_units">‹ BACK TO UNITS</string>
+    <string name="title_pps_lab">PPS PRACTICAL LAB (C11 / C17)</string>
+    <string name="label_lab_snippets">LAB SNIPPETS:</string>
+    <string name="tab_dark_compiler_1">⚡ Dark Compiler 1</string>
+    <string name="tab_dark_compiler_2">🚀 Dark Compiler 2</string>
+    <string name="btn_fullscreen_tab">↗ Fullscreen Tab</string>
+    <string name="upload_cta_title">Upload Real PDF Notes</string>
+    <string name="upload_cta_sub">Tap to upload any PDF from your device. Tap any card below to open and read.</string>
+    <string name="available_pdfs_header">AVAILABLE PDF NOTES (TAP TO OPEN)</string>
+    <string name="btn_open">Open</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_close">✕ Close</string>
+    <string name="btn_open_external">↗ Open Externally</string>
+</resources>
